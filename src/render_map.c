@@ -10,7 +10,8 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../cub3d.h"
+#	include	"../cub3d.h"
+#	include	<pthread.h>
 
 void	draw_vertical_stripe(mlx_image_t *img, mlx_image_t *tex, t_stripe strip)
 {
@@ -32,6 +33,8 @@ void	draw_vertical_stripe(mlx_image_t *img, mlx_image_t *tex, t_stripe strip)
 		if (texy >= (int)tex->height)
 			texy = (int)tex->height - 1;
 		pixel = &tex->pixels[4 * (texy * (int)tex->width + strip.texx)];
+		if (y < 0 && y > SCREEN_HEIGHT)
+			break ;
 		mlx_put_pixel(img, strip.x, y,
 			((pixel[0] << 24) | (pixel[1] << 16) | (pixel[2] << 8) | pixel[3]));
 		tex_pos += step;
@@ -64,8 +67,62 @@ void	draw_textured_wall(t_player *pl, mlx_image_t *img, t_ray *ray, int x)
 	draw_vertical_stripe(img, pl->data->wall_img[ray->hit], stripe);
 }
 
+void	*render_column(void *arg)
+{
+	t_thread_task	*task;
+	t_ray			ray;
+	int				x;
+
+	task = (t_thread_task*)arg;
+	x = task->start_x;
+	while (x < task->end_x)
+	{
+		init_ray(&ray, task->player, x, SCREEN_WIDTH);
+		calculate_step_and_side_dist(&ray, task->player);
+		dda_loop(&ray, task->data);
+
+	if (ray.hit >= 0 && ray.hit <= 4 && 
+		task->data->wall_img[ray.hit])
+		{
+			calculate_perp_wall_dist(&ray, task->player);
+			draw_textured_wall(task->player, task->data->img, &ray, x);		}
+		x++;
+	}
+	return (NULL);
+}
+
 void	raycast_and_draw(t_data *data, t_player *player)
 {
+	pthread_t		threads[NUMBER_OF_THREADS];
+	t_thread_task	task[NUMBER_OF_THREADS];
+	int				i;
+	int				columns;
+
+	columns = SCREEN_WIDTH / NUMBER_OF_THREADS;
+	i = 0;
+	while (i < NUMBER_OF_THREADS)
+	{
+		task[i].data = data;
+		task[i].player = player;
+		task[i].start_x = i * columns;
+
+		if (i == NUMBER_OF_THREADS - 1)
+			task[i].end_x = SCREEN_WIDTH;
+		else
+			task[i].end_x = (i + 1) * columns;
+
+		pthread_create(&threads[i], NULL, 
+			render_column, &task[i]);
+		i++;
+	}
+
+	i = 0;
+	while (i < NUMBER_OF_THREADS)
+	{
+		pthread_join(threads[i], NULL);
+		i++;
+	}
+	/*
 	mlx_image_t	*img;
 	t_ray		ray;
 	int			x;
@@ -84,4 +141,5 @@ void	raycast_and_draw(t_data *data, t_player *player)
 		}
 		x++;
 	}
+*/
 }

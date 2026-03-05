@@ -21,6 +21,7 @@
 # define SCREEN_HEIGHT 1080
 # define CEILING_COLOUR 120
 # define PLAYER_COLLISION_BUFFER 0.3
+# define NUMBER_OF_THREADS	4
 # include <stdio.h>
 # include <unistd.h>
 # include <sys/wait.h>
@@ -31,6 +32,7 @@
 # include "MLX42/include/MLX42/MLX42.h"
 
 typedef struct t_data	t_data;
+
 
 typedef struct t_point
 {
@@ -108,6 +110,14 @@ typedef struct t_stripe
 	int	texx;
 	int	x;
 }	t_stripe;
+
+typedef	struct	s_useless_thread_task
+{
+	t_data		*data;
+	t_player	*player;
+	int			start_x;
+	int			end_x;
+} t_thread_task;
 
 /* ===================== PARSING / MAP ===================== */
 
